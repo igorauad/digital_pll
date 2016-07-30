@@ -73,9 +73,18 @@ Ki          = 0.01;  % Integral Constant
 %% Derived parameters
 y        = y_ppm * 1e-6;  % Fractional frequency offset in ppm
 f_offset = y * f0;        % Absolute freq error (in Hz)
+F_offset = f_offset/fs;   % Normalized absolute frequency offset
 
 % Nominal Phase Increment (used in the loop phase accumulator)
 delta_phi_c = 2*pi*f0/fs;
+
+% PLL pull range
+% Normalize frequency offset must be smaller than Kp*pi, namely:
+%
+%   F_offset < Kp*pi
+if (F_offset > Kp*pi)
+    warning('Frequency offset is not within the pull range\n');
+end
 
 %% Generate input signal
 % The input signal obviously does not depend on the loop processing, so we
