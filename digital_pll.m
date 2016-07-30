@@ -63,7 +63,10 @@ phi_error          = zeros(nIterations, 1); % Phase Error
 phi_error_filtered = zeros(nIterations, 1); % Filtered Phase Error
 
 % Initialize the loop DDS to a random phase
-phi_loop(1) = sqrt(pi)*randn;
+phi_loop(1)  = sqrt(pi)*randn;
+
+% Initialize integral filter output
+integral_out = 0;
 
 for i = 1:nIterations
 
@@ -100,7 +103,7 @@ phi_error_filtered(i) = proportional_out + integral_out;
 % The angle of the DDS complex exponential in the next clock cycle results
 % from the sum between the nominal phase increment and the filtered phase
 % error term:
-phi_loop(i+1) = phi_loop(i) + delta_phi_c + phi_error_filtered(i); 
+phi_loop(i+1) = phi_loop(i) + delta_phi_c + phi_error_filtered(i);
 
 end
 
