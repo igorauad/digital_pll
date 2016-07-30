@@ -1,9 +1,66 @@
-clearvars clc
+clearvars, close all, clc
 % Digital PLL Implementation
 %
-% Experiment with the loop filter constants Kp and Ki to verify classical
-% observations about PLL, such that frequency offsets can not be corrected
-% if Ki=0;
+% Implements a DSP-based Phase-Locked Loop featured with a PI controller.
+%
+% The loop has three main components:
+%   1) Direct Digital Synthesizer (DDS): iteratively generates a a complex
+%   sinusoid by computing exp(j*phi_loop), where "phi_loop" is its
+%   instantaneous phase that continuously grows based on a configurable
+%   increment value. The angle increment added to the DDS (accumulated in
+%   "phi_loop", i.e. its "phase accumulator") at each clock cycle (sample
+%   period) is the nominal increment 2*pi*f0/fs, where f0 is the nominal
+%   frequency of the DDS, plus a varying correction term. The latter term
+%   should vary considerably until the instant after which the DDS output
+%   is synchronized to the input, namely until the loop "locks".
+%       Note that the DDS is a numerically controlled oscillator (NCO).
+%   Just like a VCO, the derivative of its output signal's phase is
+%   proportional to the signal passed to it as input, or, equivalently, its
+%   phase output is the integral of the input. The NCO outputs a complex IQ
+%   sinusoid:
+%
+%           s_loop(n) = exp(j*(2*pi*(f0/fs)n + theta_hat(n))),     (1)
+%
+%   where "theta_hat" is a phase that should track the phase "theta" from
+%   an input of the form:
+%
+%           s_in(n) = exp(j*(2*pi*(f0/fs)*n + theta(n))).          (2)
+%
+%   This phase "theta_hat" comes from a "phase accumulator" that
+%   continuously integrates the NCO input signal (the filtered error
+%   explained below). Hence,
+%
+%           theta_hat(n) = sum_{n=0}^{n} filtered_error(n).        (3)
+%
+%   Clearly, if the input signal s_in has a fixed frequency offset f_offset
+%   with respect to the nominal frequency, then its "theta" term is:
+%
+%           theta(n) = 2*pi*(f_offset/fs)*n                        (4)
+%
+%   In this case, the filtered error has to converge to
+%   "2*pi*(f_offset/fs)", such that the NCO output phase difference in (3)
+%   can track the input phase difference term of (4).
+%
+%   2) Phase Detector: extracts the phase error from the input complex
+%   exponential and the loop complex exponential
+%
+%   3) Loop Filter: filters the phase error such that, after sufficient
+%   iterations, it is driven to zero (for null frequency offset and Ki=0 or
+%   for non-null frequency offset, but also non-null Ki=0) or a constant
+%   value (for constant frequency offset and Ki=0). The output of the loop
+%   filter (called filtered phase error) is accumulated by the NCO (DDS),
+%   as described in (3), and composes the correction term "theta_hat" of
+%   Equation (1).
+%
+%   In the case when Ki > 0, namely the integral controller is enabled,
+%   since the phase error from the phase detector is integrated, once the
+%   loop converges to a "locked" state, the integrator has already
+%   accumulated all the phase error required to output a constant value to
+%   the NCO accumulator. In the previous example of a fixed frequency
+%   offset, the integral filter output would rise and converge to
+%   2*pi*(f_offset/fs) while the phase error (input to the integral filter)
+%   would converge to zero.
+%
 
 nIterations = 2e3;
 fs          = 1e6;   % Nominal sampling frequency
@@ -37,26 +94,9 @@ phi_in       = (0:nIterations-1).' * delta_phi_in + phase_noise;
 s_in         = exp(1j * phi_in);
 
 %% Loop
-% The loop has three main components:
-%   1) Direct Digital Synthesizer (DDS): iteratively generates a a complex
-%   sinusoid by computing e(j*phi_loop), where "phi_loop" is its
-%   instantaneous phase that continuously grows based on a configurable
-%   increment value. The angle increment added to the DDS (accumulated in
-%   "phi_loop", i.e. its "phase accumulator") at each clock cycle (sample
-%   period) is the nominal increment 2*pi*f0/fs plus a varying correction
-%   term. The latter term should vary considerably until the point in which
-%   the DDS output is synchronized to the input, namely until the loop
-%   "locks".
-%
-%   2) Phase Detector: extracts the phase error from the input complex
-%   exponential and the loop complex exponential
-%
-%   3) Loop Filter: filters the phase error such that, after sufficient
-%   iterations, it is driven to zero. The output of the loop filter (called
-%   filtered phase error) is the correction term used in the DDS.
 
 % Preallocate
-dds_loop           = zeros(nIterations, 1); % DDS Complex Value
+s_loop             = zeros(nIterations, 1); % DDS Complex Value
 phi_loop           = zeros(nIterations, 1); % DDS Phase Accumulator
 dds_mult           = zeros(nIterations, 1); % Conjugate Product
 phi_error          = zeros(nIterations, 1); % Phase Error
@@ -71,7 +111,7 @@ integral_out = 0;
 for i = 1:nIterations
 
 %% Loop DDS:
-dds_loop(i) = exp(1j*phi_loop(i));
+s_loop(i) = exp(1j*phi_loop(i));
 
 %% Phase Detector
 % Phase error is obtained by computing the angle of the conjugate product
@@ -82,7 +122,7 @@ dds_loop(i) = exp(1j*phi_loop(i));
 %   Conj. Product Angle   : phi_in - phi_loop
 
 % Multiply the input complex exponential by the conjugate of the loop DDS:
-dds_mult(i) = s_in(i) * conj(dds_loop(i));
+dds_mult(i) = s_in(i) * conj(s_loop(i));
 
 % Phase error:
 phi_error(i) = angle(dds_mult(i));
@@ -130,7 +170,7 @@ figure
 subplot(121)
 plot(real(s_in))
 hold on
-plot(real(dds_loop), 'r')
+plot(real(s_loop), 'r')
 ylabel('Amplitude')
 xlabel('Sample')
 title('Real part')
@@ -139,9 +179,8 @@ legend('Input', 'Output')
 subplot(122)
 plot(imag(s_in))
 hold on
-plot(imag(dds_loop), 'r')
+plot(imag(s_loop), 'r')
 ylabel('Amplitude')
 xlabel('Sample')
 title('Imaginary part')
 legend('Input', 'Output')
-
