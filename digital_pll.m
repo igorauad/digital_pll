@@ -170,6 +170,21 @@ phi_loop(i+1) = phi_loop(i) + delta_phi_c + phi_error_filtered(i);
 
 end
 
+%% Expected filter steady-state value
+% The values to which the phase error and the filtered phase error converge
+% depend on the loop order. For a second-order loop (with a PI controller),
+% assuming an input with fixed frequency offset, the phase error converges
+% to 0. In contrast, for a first-order loop (with a Proportional controller
+% only), the phase error converges to 2*pi*(f_offset/fs)/Kp. In both cases,
+% the filter output converges to 2*pi*(f_offset/fs).
+if (Ki == 0)
+    phi_error_ss_expected = 2*pi * F_offset / Kp;
+else
+    phi_error_ss_expected = 0;
+end
+
+phi_error_filtered_ss_expected = 2*pi * F_offset;
+
 %% Performance
 % Input vs. Output Instantaneous Phase
 figure
@@ -183,8 +198,18 @@ legend('Input', 'Output')
 
 % Filtered Phase Error
 figure
-plot(phi_error_filtered)
+plot(phi_error)
+hold on
+plot(phi_error_filtered, 'g')
+hold on
+plot(phi_error_ss_expected * ones(nIterations,1), '-.k')
+hold on
+plot(phi_error_filtered_ss_expected *  ones(nIterations,1), '--r')
 title('Loop Filter Output')
+legend('Phase Error', ...
+    'Filtered Phase Error', ...
+    'Expected Phase Error Steady-State', ...
+    'Expected Filtered Steady-State')
 xlabel('Sample')
 ylabel('Error (rad)')
 
