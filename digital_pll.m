@@ -61,6 +61,20 @@ clearvars, close all, clc
 %   2*pi*(f_offset/fs) while the phase error (input to the integral filter)
 %   would converge to zero.
 %
+% Suggested experiments:
+%   1) Set Ki = 0 and configure the frequency offset to zero (y_ppm = 0).
+%   See that the PLL can correct the constant phase error.
+%   2) Set Ki = 0 and configure a large enough frequency offset. See that
+%   the phase error converges to a constant value 2*pi*f_offset/fs.
+%   3) With the same configuration, increase Kp and see that the
+%   steady-state phase error to which the PLL converges becomes smaller,
+%   at the expense of a noisier phase output due to the fact that the PLL
+%   bandwidth increases with Kp.
+%   4) Still with the same configuration (Ki = 0), reduce Kp such that the
+%   phase error can exceed pi, case in wich the "atan" phase detector
+%   suffers from ambiguity. In another words, use a Kp that allows a phase
+%   error exceeding the pull-range of the PLL. Maybe increase the number of
+%   iterations (nIterations) for better visualization.
 
 nIterations = 2e3;
 fs          = 1e6;   % Nominal sampling frequency
