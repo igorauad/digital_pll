@@ -92,6 +92,10 @@ clearvars, close all, clc
 %   suffers from ambiguity. In another words, use a Kp that allows a phase
 %   error exceeding the pull-range of the PLL. Maybe increase the number of
 %   iterations (nIterations) for better visualization.
+%
+% Selected Bibliography:
+% [1] Rice, Michael. Digital Communications: A Discrete-Time Approach.
+% Appendix C.
 
 nIterations = 2e3;
 fs          = 1e6;   % Nominal sampling frequency
