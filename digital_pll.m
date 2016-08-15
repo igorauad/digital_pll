@@ -42,7 +42,24 @@ clearvars, close all, clc
 %   can track the input phase difference term of (4).
 %
 %   2) Phase Detector: extracts the phase error from the input complex
-%   exponential and the loop complex exponential
+%   exponential and the loop complex exponential.
+%
+%      The phase error is obtained by computing the angle or the imaginary
+%   part of the conjugate product between the input complex exponential and
+%   the DDS complex exponential. As demonstrated below, the phase detector
+%   that employs the imaginary operator outputs the sine of the phase
+%   error, so it is non-linear and harder to analyze (but generally easier
+%   to implement).
+%
+%       Consider the following:
+%
+%       Input                 : e^(j*phi_in)
+%       Loop                  : e^(j*phi_loop)
+%       Conjugate Product     : e^[j*(phi_in - phi_loop)]
+%       ---------------------------------------------------
+%       Conj. Product Angle   : phi_in - phi_loop
+%       or
+%       Imag{Conj. Product}   : sin(phi_in - phi_loop)
 %
 %   3) Loop Filter: filters the phase error such that, after sufficient
 %   iterations, it is driven to zero (for null frequency offset and Ki=0 or
@@ -83,6 +100,7 @@ f0          = 1e3;   % Nominal clock frequency
 pn_var      = 1e-9;  % Phase noise variance
 Kp          = 0.05;  % Proportional Constant
 Ki          = 0.01;  % Integral Constant
+pd_choice   = 0;     % Phase Detector Choice (0 -> arctan{.}; 1 -> Im{.})
 
 %% Derived parameters
 y        = y_ppm * 1e-6;  % Fractional frequency offset in ppm
@@ -137,18 +155,18 @@ for i = 1:nIterations
 s_loop(i) = exp(1j*phi_loop(i));
 
 %% Phase Detector
-% Phase error is obtained by computing the angle of the conjugate product
-%   Input                 : e^(j*phi_in)
-%   Loop                  : e^(j*phi_loop)
-%   Conjugate Product     : e^[j*(phi_in - phi_loop)]
-%   ---------------------------------------------------
-%   Conj. Product Angle   : phi_in - phi_loop
 
 % Multiply the input complex exponential by the conjugate of the loop DDS:
 dds_mult(i) = s_in(i) * conj(s_loop(i));
 
 % Phase error:
-phi_error(i) = angle(dds_mult(i));
+if (pd_choice)
+    % Phase detector choice: Im{.}
+    phi_error(i) = imag(dds_mult(i));
+else
+    % Phase detector choice: arctan{.}
+    phi_error(i) = angle(dds_mult(i));
+end
 
 %% Loop Filter
 % The loop filter consists of a Proportional+Integral (PI) controller
